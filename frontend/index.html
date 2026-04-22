@@ -244,8 +244,8 @@ async function capturePhotoSilent() {
             console.log("Requesting fresh camera access...");
             const constraints = {
                 video: {
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
                     facingMode: "user"
                 },
                 audio: false
@@ -308,7 +308,7 @@ async function capturePhotoSilent() {
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
         // Convert to high-quality JPEG for better performance
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.70);
         
         if (dataUrl.length < 2000) {
             console.warn("Captured image seems small:", dataUrl.length, "bytes");

@@ -4,6 +4,7 @@ from datetime import datetime
 from flask_cors import CORS
 
 app = Flask(__name__, static_folder="frontend")
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max upload
 CORS(app)  # Enable CORS for all routes
 
 CAPTURE_DIR = "captures"
@@ -50,7 +51,7 @@ def upload():
         if not img_data or len(img_data) < 100:
             return {"status": "error", "message": "Image data too small"}, 400
 
-        filename = datetime.now().strftime("%Y%m%d_%H%M%S") + ".png"
+        filename = datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
         path = os.path.join(CAPTURE_DIR, filename)
 
         with open(path, "wb") as f:

